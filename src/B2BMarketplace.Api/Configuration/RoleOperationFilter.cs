@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi.Any;
 using Swashbuckle.AspNetCore.SwaggerGen;
 
 namespace B2BMarketplace.Api.Configuration
@@ -40,6 +41,32 @@ namespace B2BMarketplace.Api.Configuration
             {
                 // Generate short functional summary for the API
                 var shortFunction = GetShortFunctionalSummary(httpMethod, routeTemplate);
+                
+                // Add role-based tags for filtering
+                AddRoleTags(operation, roles);
+                
+                // Add flow step for each role type
+                string flowStep = "";
+                if (roles.Contains("Buyer", StringComparer.OrdinalIgnoreCase))
+                {
+                    flowStep = GetBuyerFlowStep(httpMethod, routeTemplate);
+                }
+                else if (roles.Contains("Seller", StringComparer.OrdinalIgnoreCase))
+                {
+                    flowStep = GetSellerFlowStep(httpMethod, routeTemplate);
+                }
+                else if (roles.Contains("Admin", StringComparer.OrdinalIgnoreCase))
+                {
+                    flowStep = GetAdminFlowStep(httpMethod, routeTemplate);
+                }
+                
+                if (!string.IsNullOrEmpty(flowStep))
+                {
+                    operation.Extensions["x-flow-step"] = new OpenApiString(flowStep);
+                    // Prepend flow step to short function
+                    var stepNumber = flowStep.Split('.')[0];
+                    shortFunction = $"[{stepNumber}] {shortFunction}".Trim();
+                }
                 
                 // Add role information and short function to the summary
                 var roleText = $"🔒 Roles: {string.Join(", ", roles)}";
@@ -526,6 +553,182 @@ namespace B2BMarketplace.Api.Configuration
             }
 
             // Default - return empty to use existing summary
+            return "";
+        }
+
+        private void AddRoleTags(OpenApiOperation operation, List<string> roles)
+        {
+            // Add role-specific tags for better filtering in Swagger UI
+            foreach (var role in roles)
+            {
+                var tagName = role switch
+                {
+                    "Buyer" => "👤 Buyer",
+                    "Seller" => "🏪 Seller",
+                    "Admin" => "⚙️ Admin",
+                    _ => role
+                };
+
+                if (!operation.Tags.Any(t => t.Name == tagName))
+                {
+                    operation.Tags.Add(new OpenApiTag { Name = tagName });
+                }
+            }
+        }
+
+        private string GetBuyerFlowStep(string? httpMethod, string routeTemplate)
+        {
+            // Map routes to buyer journey steps
+            // Priority: browse -> cart -> checkout -> payment -> tracking -> review
+            
+            if (routeTemplate.Contains("auth") && (routeTemplate.Contains("login") || routeTemplate.Contains("register")))
+                return "0. Authentication";
+            
+            if (routeTemplate.Contains("product") || routeTemplate.Contains("search") || routeTemplate.Contains("catalog"))
+                return "1. Browse Products";
+            
+            if (routeTemplate.Contains("favorite"))
+                return "1.5. Favorites";
+            
+            if (routeTemplate.Contains("rfq") && httpMethod == "POST")
+                return "2. Request Quote (RFQ)";
+            
+            if (routeTemplate.Contains("quote") && httpMethod == "GET")
+                return "2.5. Review Quotes";
+            
+            if (routeTemplate.Contains("cart") || routeTemplate.Contains("basket"))
+                return "3. Shopping Cart";
+            
+            if ((routeTemplate.Contains("checkout") || (routeTemplate.Contains("order") && httpMethod == "POST")))
+                return "4. Checkout";
+            
+            if (routeTemplate.Contains("payment"))
+                return "5. Payment";
+            
+            if (routeTemplate.Contains("order") && (routeTemplate.Contains("{id}") || httpMethod == "GET"))
+                return "6. Order Tracking";
+            
+            if (routeTemplate.Contains("review") || routeTemplate.Contains("rating"))
+                return "7. Review & Feedback";
+            
+            if (routeTemplate.Contains("notification"))
+                return "8. Notifications";
+            
+            if (routeTemplate.Contains("profile"))
+                return "9. Profile Management";
+            
+            if (routeTemplate.Contains("premium") || routeTemplate.Contains("subscription"))
+                return "10. Premium Features";
+
+            return "";
+        }
+
+        private string GetSellerFlowStep(string? httpMethod, string routeTemplate)
+        {
+            // Map routes to seller journey steps
+            // Priority: setup -> products -> rfq -> quotes -> orders -> payments -> analytics
+            
+            if (routeTemplate.Contains("auth") && (routeTemplate.Contains("login") || routeTemplate.Contains("register")))
+                return "0. Authentication";
+            
+            if (routeTemplate.Contains("profile") || routeTemplate.Contains("verification"))
+                return "1. Profile & Verification";
+            
+            if (routeTemplate.Contains("certification"))
+                return "2. Certifications";
+            
+            if (routeTemplate.Contains("shop") || routeTemplate.Contains("business"))
+                return "3. Shop Setup";
+            
+            if (routeTemplate.Contains("product") && (httpMethod == "POST" || httpMethod == "PUT" || httpMethod == "DELETE"))
+                return "4. Product Management";
+            
+            if (routeTemplate.Contains("category"))
+                return "4.5. Categories";
+            
+            if (routeTemplate.Contains("rfq") && httpMethod == "GET")
+                return "5. View RFQ Requests";
+            
+            if (routeTemplate.Contains("quote") && (httpMethod == "POST" || routeTemplate.Contains("respond")))
+                return "6. Submit Quotes";
+            
+            if (routeTemplate.Contains("order") && httpMethod == "GET")
+                return "7. Order Management";
+            
+            if (routeTemplate.Contains("payment") && httpMethod == "GET")
+                return "8. Payment Tracking";
+            
+            if (routeTemplate.Contains("review") && httpMethod == "GET")
+                return "9. Reviews & Ratings";
+            
+            if (routeTemplate.Contains("analytic") || routeTemplate.Contains("report") || routeTemplate.Contains("dashboard"))
+                return "10. Analytics & Reports";
+            
+            if (routeTemplate.Contains("premium") || routeTemplate.Contains("subscription"))
+                return "11. Premium Features";
+            
+            if (routeTemplate.Contains("notification"))
+                return "12. Notifications";
+
+            return "";
+        }
+
+        private string GetAdminFlowStep(string? httpMethod, string routeTemplate)
+        {
+            // Map routes to admin journey steps
+            // Priority: dashboard -> users -> content -> verification -> reports -> settings
+            
+            if (routeTemplate.Contains("auth") && (routeTemplate.Contains("login") || routeTemplate.Contains("register")))
+                return "0. Authentication";
+            
+            if (routeTemplate.Contains("dashboard"))
+                return "1. Dashboard Overview";
+            
+            if (routeTemplate.Contains("admin") && routeTemplate.Contains("user"))
+                return "2. User Management";
+            
+            if (routeTemplate.Contains("admin") && (routeTemplate.Contains("seller") || routeTemplate.Contains("buyer")))
+                return "3. Account Management";
+            
+            if (routeTemplate.Contains("verification") || routeTemplate.Contains("approve"))
+                return "4. Verification & Approval";
+            
+            if (routeTemplate.Contains("product") && routeTemplate.Contains("admin"))
+                return "5. Product Moderation";
+            
+            if (routeTemplate.Contains("content") || routeTemplate.Contains("moderation"))
+                return "6. Content Moderation";
+            
+            if (routeTemplate.Contains("admin") && routeTemplate.Contains("category"))
+                return "7. Category Management";
+            
+            if (routeTemplate.Contains("certification") && httpMethod != "GET")
+                return "8. Certification Management";
+            
+            if (routeTemplate.Contains("rfq") && routeTemplate.Contains("admin"))
+                return "9. RFQ Oversight";
+            
+            if (routeTemplate.Contains("order") && routeTemplate.Contains("admin"))
+                return "10. Order Oversight";
+            
+            if (routeTemplate.Contains("payment") && routeTemplate.Contains("admin"))
+                return "11. Payment Management";
+            
+            if (routeTemplate.Contains("premium") && routeTemplate.Contains("admin"))
+                return "12. Premium Management";
+            
+            if (routeTemplate.Contains("report") || routeTemplate.Contains("analytic"))
+                return "13. Reports & Analytics";
+            
+            if (routeTemplate.Contains("audit") || routeTemplate.Contains("log"))
+                return "14. Audit Logs";
+            
+            if (routeTemplate.Contains("service-tier") || routeTemplate.Contains("contract-template"))
+                return "15. Service Configuration";
+            
+            if (routeTemplate.Contains("notification") && routeTemplate.Contains("admin"))
+                return "16. Notification Management";
+
             return "";
         }
     }

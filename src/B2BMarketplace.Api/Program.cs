@@ -262,13 +262,67 @@ var title = swaggerConfig["Title"] ?? "B2B Marketplace API";
 var version = swaggerConfig["Version"] ?? "v1";
 var description = swaggerConfig["Description"] ?? "API for B2B Marketplace Platform";
 
+// Add Getting Started guide
+var gettingStarted = @"
+
+## 🚀 Quick Start Guides
+
+### 👤 For Buyers:
+
+**0. Authentication**
+- Register: `POST /api/auth/register`
+- Login: `POST /api/auth/login` (get JWT token)
+
+**1. Browse Products** → **3. Shopping Cart** → **4. Checkout** → **5. Payment** → **6. Order Tracking** → **7. Review**
+
+Key endpoints: `/api/products`, `/api/cart`, `/api/order`, `/api/payments`, `/api/reviews`
+
+---
+
+### 🏪 For Sellers:
+
+**0. Authentication** → **1. Profile & Verification** → **4. Product Management** → **5. View RFQ** → **6. Submit Quotes** → **7. Order Management**
+
+**Setup Phase:**
+- Complete profile: `PUT /api/profile`
+- Submit verification: `POST /api/verification`
+- Add certifications: `POST /api/certifications`
+
+**Daily Operations:**
+- Manage products: `POST /api/products`, `PUT /api/products/{id}`
+- Respond to RFQs: `GET /api/rfq`, `POST /api/quotes`
+- Process orders: `GET /api/orders`, `PUT /api/orders/{id}/status`
+- View analytics: `GET /api/analytics`, `GET /api/dashboard`
+
+---
+
+### ⚙️ For Admins:
+
+**1. Dashboard** → **2. User Management** → **4. Verification** → **6. Content Moderation** → **13. Reports**
+
+**Core Functions:**
+- Manage users: `GET /api/admin/users`, `PUT /api/admin/users/{id}/approve`
+- Moderate content: `GET /api/admin/moderation`, `PUT /api/admin/content/{id}/approve`
+- View reports: `GET /api/admin/reports`, `GET /api/analytics`
+- Manage categories: `POST /api/admin/categories`
+- Audit logs: `GET /api/audit-logs`
+
+---
+
+### 🏷️ Filter by Role:
+Click tags '👤 Buyer', '🏪 Seller', or '⚙️ Admin' to filter relevant endpoints.
+
+### 📋 Flow Steps:
+Endpoints are marked with [Step X] showing the logical sequence for each role's workflow.
+";
+
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo
     {
         Title = title,
         Version = version,
-        Description = description
+        Description = description + gettingStarted
     });
 
     // Add security schemes
@@ -312,6 +366,37 @@ builder.Services.AddSwaggerGen(c =>
 
     // Add role information to API endpoints
     c.OperationFilter<RoleOperationFilter>();
+
+    // Order tags by user journey: Buyer -> Seller -> Admin
+    c.TagActionsBy(api =>
+    {
+        if (api.GroupName != null)
+        {
+            return new[] { api.GroupName };
+        }
+
+        var controllerName = api.ActionDescriptor.RouteValues["controller"];
+        return new[] { controllerName ?? "Other" };
+    });
+
+    // Custom tag ordering
+    c.OrderActionsBy((apiDesc) =>
+    {
+        var tags = apiDesc.GroupName ?? apiDesc.ActionDescriptor.RouteValues["controller"] ?? "";
+        var order = tags switch
+        {
+            var t when t.Contains("Auth") => "0",
+            var t when t.Contains("Buyer") || t.Contains("Product") || t.Contains("Search") => "1",
+            var t when t.Contains("Cart") => "2",
+            var t when t.Contains("Order") => "3",
+            var t when t.Contains("Payment") => "4",
+            var t when t.Contains("Review") => "5",
+            var t when t.Contains("Seller") => "6",
+            var t when t.Contains("Admin") => "7",
+            _ => "9"
+        };
+        return $"{order}_{apiDesc.RelativePath}";
+    });
 
     // Resolve conflicting actions by using the first one encountered
     c.ResolveConflictingActions(apiDescriptions => apiDescriptions.First());
