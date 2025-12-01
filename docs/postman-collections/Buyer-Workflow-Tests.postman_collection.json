@@ -1,0 +1,631 @@
+{
+  "info": {
+    "name": "Buyer Workflow Tests",
+    "description": "Simple workflow tests for Buyer role in B2B Marketplace",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:5000",
+      "type": "string"
+    },
+    {
+      "key": "buyer_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "test_buyer_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "test_seller_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "test_rfq_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Buyer Registration & Authentication",
+      "item": [
+        {
+          "name": "Buyer Registration",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201', function () {",
+                  "    pm.expect(pm.response.code).to.equal(201);",
+                  "});",
+                  "",
+                  "pm.test('Registration successful', function () {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.message).to.include('successful');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"testbuyer@example.com\",\n  \"password\": \"TestPass123!\",\n  \"role\": \"Buyer\",\n  \"firstName\": \"Test\",\n  \"lastName\": \"Buyer\",\n  \"company\": \"Test Company\",\n  \"country\": \"United States\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/Auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["api", "Auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Buyer Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has token', function () {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.data).to.have.property('token');",
+                  "    pm.environment.set('buyer_token', response.data.token);",
+                  "    pm.environment.set('test_buyer_id', response.data.user.id);",
+                  "});",
+                  "",
+                  "pm.test('Response has user role', function () {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.data.user.role).to.equal('Buyer');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"testbuyer@example.com\",\n  \"password\": \"TestPass123!\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/Auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "Auth", "login"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Profile Management",
+      "item": [
+        {
+          "name": "Get Buyer Profile",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "",
+                  "pm.test('Profile contains required fields', function () {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.data).to.have.property('name');",
+                  "    pm.expect(response.data).to.have.property('email');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{buyer_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/profile",
+              "host": ["{{base_url}}"],
+              "path": ["api", "profile"]
+            }
+          }
+        },
+        {
+          "name": "Update Buyer Profile",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "",
+                  "pm.test('Profile updated successfully', function () {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.message).to.include('updated');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{buyer_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Updated\",\n  \"lastName\": \"Buyer\",\n  \"company\": \"Updated Test Company\",\n  \"country\": \"Canada\",\n  \"phone\": \"+1-555-0123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/profile",
+              "host": ["{{base_url}}"],
+              "path": ["api", "profile"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Seller Search & Discovery",
+      "item": [
+        {
+          "name": "Search Sellers by Keyword",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "",
+                  "pm.test('Response contains sellers', function () {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.data).to.have.property('items');",
+                  "    pm.expect(response.data.items).to.be.an('array');",
+                  "    if (response.data.items.length > 0) {",
+                  "        pm.environment.set('test_seller_id', response.data.items[0].id);",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{buyer_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/search/sellers?keyword=electronics",
+              "host": ["{{base_url}}"],
+              "path": ["api", "search", "sellers"],
+              "query": [
+                {
+                  "key": "keyword",
+                  "value": "electronics"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Search Sellers by Industry",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "",
+                  "pm.test('Response contains filtered sellers', function () {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.data).to.have.property('items');",
+                  "    pm.expect(response.data.items).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{buyer_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/search/sellers?industry=Technology",
+              "host": ["{{base_url}}"],
+              "path": ["api", "search", "sellers"],
+              "query": [
+                {
+                  "key": "industry",
+                  "value": "Technology"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Seller Details",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "",
+                  "pm.test('Seller profile contains required information', function () {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.data).to.have.property('items');",
+                  "    pm.expect(response.data.items).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{buyer_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/search/sellers/{{test_seller_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "search", "sellers", "{{test_seller_id}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. RFQ Management",
+      "item": [
+        {
+          "name": "Create RFQ",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201', function () {",
+                  "    pm.expect(pm.response.code).to.equal(201);",
+                  "});",
+                  "",
+                  "pm.test('RFQ created successfully', function () {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.data).to.have.property('id');",
+                  "    pm.environment.set('test_rfq_id', response.data.id);",
+                  "    pm.expect(response.message).to.include('created');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{buyer_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Test RFQ for Electronic Components\",\n  \"description\": \"We need to procure electronic components for our manufacturing process. Looking for reliable suppliers with quality certifications.\",\n  \"category\": \"Electronics\",\n  \"quantity\": 1000,\n  \"unit\": \"pieces\",\n  \"budget\": \"5000-10000\",\n  \"deadline\": \"2024-12-31\",\n  \"requirements\": [\n    \"ISO certification required\",\n    \"Minimum 2 years warranty\",\n    \"Bulk shipping capability\"\n  ],\n  \"sellerIds\": [\"{{test_seller_id}}\"]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/rfq",
+              "host": ["{{base_url}}"],
+              "path": ["api", "rfq"]
+            }
+          }
+        },
+        {
+          "name": "Get Buyer RFQs",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "",
+                  "pm.test('Response contains RFQs', function () {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.data).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{buyer_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/rfq",
+              "host": ["{{base_url}}"],
+              "path": ["api", "rfq"]
+            }
+          }
+        },
+        {
+          "name": "Get RFQ Details",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "",
+                  "pm.test('RFQ details are complete', function () {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.data).to.have.property('Status');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{buyer_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/rfq/{{test_rfq_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "rfq", "{{test_rfq_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Close RFQ",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "",
+                  "pm.test('RFQ closed successfully', function () {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.message).to.include('closed');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{buyer_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"Closed\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/rfq/{{test_rfq_id}}/status",
+              "host": ["{{base_url}}"],
+              "path": ["api", "rfq", "{{test_rfq_id}}", "status"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Reviews & Ratings",
+      "item": [
+        {
+          "name": "Create Seller Review",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 201', function () {",
+                  "    pm.expect(pm.response.code).to.equal(201);",
+                  "});",
+                  "",
+                  "pm.test('Review created successfully', function () {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.message).to.include('created');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{buyer_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sellerId\": \"{{test_seller_id}}\",\n  \"rating\": 4,\n  \"comment\": \"Good communication and timely delivery. Would work with them again.\",\n  \"transactionId\": \"TEST-001\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/reviews",
+              "host": ["{{base_url}}"],
+              "path": ["api", "reviews"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Notifications",
+      "item": [
+        {
+          "name": "Get Buyer Notifications",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "",
+                  "pm.test('Response contains notifications', function () {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.data).to.have.property('items');",
+                  "    pm.expect(response.data.items).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{buyer_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/notifications",
+              "host": ["{{base_url}}"],
+              "path": ["api", "notifications"]
+            }
+          }
+        },
+        {
+          "name": "Mark Notification as Read",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.expect(pm.response.code).to.equal(200);",
+                  "});",
+                  "",
+                  "pm.test('Notification marked as read', function () {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.message).to.include('marked as read');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{buyer_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/notifications/1/read",
+              "host": ["{{base_url}}"],
+              "path": ["api", "notifications", "1", "read"]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ]
+}

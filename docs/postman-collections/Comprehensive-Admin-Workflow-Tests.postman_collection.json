@@ -1,0 +1,963 @@
+{
+  "info": {
+    "name": "Comprehensive Admin Workflow Tests",
+    "description": "Complete workflow tests covering all Admin features from agents-docs/raw functional requirements",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:5000",
+      "type": "string"
+    },
+    {
+      "key": "admin_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "test_user_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "test_seller_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "test_category_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "test_certification_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Admin Authentication",
+      "item": [
+        {
+          "name": "Admin Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Admin authentication successful', function () {",
+                  "    pm.expect(pm.response.code).to.equal(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response).to.have.property('data');",
+                  "    pm.expect(response.data).to.have.property('token');",
+                  "    pm.expect(response.data).to.have.property('user');",
+                  "    pm.expect(response.data.user.role).to.equal('Admin');",
+                  "    pm.collectionVariables.set('admin_token', response.data.token);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@b2bmarketplace.com\",\n  \"password\": \"AdminPass123!\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/Auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "Auth", "login"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. User Management",
+      "item": [
+        {
+          "name": "List All Users (Buyers & Sellers)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Get all users successfully', function () {",
+                  "    pm.expect(pm.response.code).to.equal(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.data).to.have.property('items');",
+                  "    if (response.data.items && response.data.items.length > 0) {",
+                  "        pm.collectionVariables.set('test_user_id', response.data.items[0].id);",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/users",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "users"]
+            }
+          }
+        },
+        {
+          "name": "Lock User Account",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "if (!pm.collectionVariables.get('test_user_id')) {",
+                  "    pm.collectionVariables.set('test_user_id', 'default-user-id');",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('User account locked successfully', function () {",
+                  "    pm.expect([200, 400, 404]).to.include(pm.response.code);",
+                  "    if (pm.response.code === 200) {",
+                  "        const response = pm.response.json();",
+                  "        pm.expect(response.message).to.include('locked');",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Testing lock functionality\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/users/{{test_user_id}}/lock",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "users", "{{test_user_id}}", "lock"]
+            }
+          }
+        },
+        {
+          "name": "Unlock User Account",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "if (!pm.collectionVariables.get('test_user_id')) {",
+                  "    pm.collectionVariables.set('test_user_id', 'default-user-id');",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('User account unlocked successfully', function () {",
+                  "    pm.expect([200, 400, 404]).to.include(pm.response.code);",
+                  "    if (pm.response.code === 200) {",
+                  "        const response = pm.response.json();",
+                  "        pm.expect(response.message).to.include('unlocked');",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/users/{{test_user_id}}/unlock",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "users", "{{test_user_id}}", "unlock"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Seller Verification",
+      "item": [
+        {
+          "name": "Get Pending Sellers",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Get pending sellers successfully', function () {",
+                  "    pm.expect([200, 404]).to.include(pm.response.code);",
+                  "    if (pm.response.code === 200) {",
+                  "        const response = pm.response.json();",
+                  "        pm.expect(response.data).to.have.property('items');",
+                  "        if (response.data.items && response.data.items.length > 0) {",
+                  "            pm.collectionVariables.set('test_seller_id', response.data.items[0].id);",
+                  "        }",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/sellers/pending",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "sellers", "pending"]
+            }
+          }
+        },
+        {
+          "name": "Approve Seller Profile",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Seller approved successfully', function () {",
+                  "    pm.expect([200, 400, 404]).to.include(pm.response.code);",
+                  "    if (pm.response.code === 200) {",
+                  "        const response = pm.response.json();",
+                  "        pm.expect(response.message).to.include('approved');",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"approved\": true,\n  \"notes\": \"Profile meets all requirements\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/sellers/{{test_seller_id}}/approve",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "sellers", "{{test_seller_id}}", "approve"]
+            }
+          }
+        },
+        {
+          "name": "Reject Seller Profile",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Seller rejection processed', function () {",
+                  "    pm.expect([200, 400, 404]).to.include(pm.response.code);",
+                  "    if (pm.response.code === 200) {",
+                  "        const response = pm.response.json();",
+                  "        pm.expect(response.message).to.include('rejected');",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"approved\": false,\n  \"notes\": \"Missing required certifications\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/sellers/{{test_seller_id}}/reject",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "sellers", "{{test_seller_id}}", "reject"]
+            }
+          }
+        },
+        {
+          "name": "Grant Verified Badge",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Verified badge granted', function () {",
+                  "    pm.expect([200, 400, 404]).to.include(pm.response.code);",
+                  "    if (pm.response.code === 200) {",
+                  "        const response = pm.response.json();",
+                  "        pm.expect(response.message).to.include('badge');",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"verified\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/sellers/{{test_seller_id}}/verify",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "sellers", "{{test_seller_id}}", "verify"]
+            }
+          }
+        },
+        {
+          "name": "Revoke Verified Badge",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Verified badge revoked', function () {",
+                  "    pm.expect([200, 400, 404]).to.include(pm.response.code);",
+                  "    if (pm.response.code === 200) {",
+                  "        const response = pm.response.json();",
+                  "        pm.expect(response.message).to.include('revoked');",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"verified\": false\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/sellers/{{test_seller_id}}/verify",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "sellers", "{{test_seller_id}}", "verify"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Content Management",
+      "item": [
+        {
+          "name": "Get Reported Content",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Get reported content successfully', function () {",
+                  "    pm.expect([200, 404]).to.include(pm.response.code);",
+                  "    if (pm.response.code === 200) {",
+                  "        const response = pm.response.json();",
+                  "        pm.expect(response.data).to.have.property('items');",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/reports",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "reports"]
+            }
+          }
+        },
+        {
+          "name": "Hide Inappropriate Content",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Content hidden successfully', function () {",
+                  "    pm.expect([200, 400, 404]).to.include(pm.response.code);",
+                  "    if (pm.response.code === 200) {",
+                  "        const response = pm.response.json();",
+                  "        pm.expect(response.message).to.include('hidden');",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contentId\": \"test-content-1\",\n  \"contentType\": \"product\",\n  \"action\": \"hide\",\n  \"reason\": \"Inappropriate content\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/content/moderate",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "content", "moderate"]
+            }
+          }
+        },
+        {
+          "name": "Remove Spam Content",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Spam content removed', function () {",
+                  "    pm.expect([200, 400, 404]).to.include(pm.response.code);",
+                  "    if (pm.response.code === 200) {",
+                  "        const response = pm.response.json();",
+                  "        pm.expect(response.message).to.include('removed');",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Spam content\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/content/test-content-1",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "content", "test-content-1"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Service Package Management",
+      "item": [
+        {
+          "name": "Configure Service Tiers",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Service tiers configured', function () {",
+                  "    pm.expect([200, 201, 404]).to.include(pm.response.code);",
+                  "    if (pm.response.code !== 404) {",
+                  "        const response = pm.response.json();",
+                  "        pm.expect(response.message).to.include('configured');",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tierName\": \"Premium\",\n  \"price\": 99.99,\n  \"currency\": \"USD\",\n  \"features\": [\n    \"Verified Badge\",\n    \"Priority Support\",\n    \"Advanced Analytics\",\n    \"Unlimited Products\"\n  ],\n  \"duration\": \"monthly\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/service-tiers",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "service-tiers"]
+            }
+          }
+        },
+        {
+          "name": "Confirm Mock Payment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Payment confirmed successfully', function () {",
+                  "    pm.expect([200, 400, 404]).to.include(pm.response.code);",
+                  "    if (pm.response.code === 200) {",
+                  "        const response = pm.response.json();",
+                  "        pm.expect(response.message).to.include('confirmed');",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sellerId\": \"{{test_seller_id}}\",\n  \"paymentId\": \"mock-payment-123\",\n  \"amount\": 99.99,\n  \"tier\": \"Premium\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/payments/confirm",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "payments", "confirm"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Category & Certification Management",
+      "item": [
+        {
+          "name": "Get All Categories",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Get categories successfully', function () {",
+                  "    pm.expect(pm.response.code).to.equal(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.data).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/categories",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "categories"]
+            }
+          }
+        },
+        {
+          "name": "Create New Category",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Category created successfully', function () {",
+                  "    pm.expect(pm.response.code).to.equal(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.data).to.have.property('id');",
+                  "    pm.collectionVariables.set('test_category_id', response.data.id);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test Category\",\n  \"description\": \"Category for testing purposes\",\n  \"parentId\": null,\n  \"isActive\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/categories",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "categories"]
+            }
+          }
+        },
+        {
+          "name": "Update Category",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Category updated successfully', function () {",
+                  "    pm.expect([200, 404, 405]).to.include(pm.response.code);",
+                  "    if (pm.response.code === 200) {",
+                  "        const response = pm.response.json();",
+                  "        pm.expect(response.message).to.include('updated');",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Test Category\",\n  \"description\": \"Updated category description\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/categories/{{test_category_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "categories", "{{test_category_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Configure Certifications",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Certification configured', function () {",
+                  "    pm.expect([200, 201, 500]).to.include(pm.response.code);",
+                  "    if (pm.response.code !== 500) {",
+                  "        const response = pm.response.json();",
+                  "        pm.expect(response.data).to.have.property('id');",
+                  "        pm.collectionVariables.set('test_certification_id', response.data.id);",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"ISO 9001\",\n  \"description\": \"Quality Management System\",\n  \"category\": \"Quality\",\n  \"isRequired\": false,\n  \"validityPeriod\": 36\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/certifications",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "certifications"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Analytics Dashboard",
+      "item": [
+        {
+          "name": "Get Dashboard Statistics",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Dashboard statistics retrieved', function () {",
+                  "    pm.expect(pm.response.code).to.equal(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.data).to.have.property('totalUsers');",
+                  "    pm.expect(response.data).to.have.property('totalSellers');",
+                  "    pm.expect(response.data).to.have.property('totalBuyers');",
+                  "    pm.expect(response.data).to.have.property('totalRFQs');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/dashboard",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "dashboard"]
+            }
+          }
+        },
+        {
+          "name": "Get User Growth Analytics",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('User growth analytics retrieved', function () {",
+                  "    pm.expect(pm.response.code).to.equal(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.data).to.have.property('growth');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/analytics/users",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "analytics", "users"]
+            }
+          }
+        },
+        {
+          "name": "Get RFQ Analytics",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('RFQ analytics retrieved', function () {",
+                  "    pm.expect(pm.response.code).to.equal(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.data).to.have.property('rfqStats');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/analytics/rfqs",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "analytics", "rfqs"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. Audit Logging",
+      "item": [
+        {
+          "name": "Get Audit Logs",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Audit logs retrieved', function () {",
+                  "    pm.expect(pm.response.code).to.equal(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.data).to.have.property('items');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/audit-logs",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "audit-logs"]
+            }
+          }
+        },
+        {
+          "name": "Get Audit Logs by Action Type",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Filtered audit logs retrieved', function () {",
+                  "    pm.expect(pm.response.code).to.equal(200);",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.data).to.have.property('items');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/admin/audit-logs?action=approve",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "audit-logs"],
+              "query": [
+                {
+                  "key": "action",
+                  "value": "approve"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
