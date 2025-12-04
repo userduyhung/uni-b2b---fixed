@@ -14,5 +14,10 @@ namespace B2BMarketplace.Core.Interfaces.Repositories
         Task<Order> UpdateOrderAsync(Order order);
         Task<Order> UpdateOrderStatusAsync(string orderId, string newStatus, string notes = null);
         Task<bool> SaveChangesAsync();
+        
+        // Admin methods
+        Task<IEnumerable<Order>> GetAllOrdersAsync();
+        Task<IEnumerable<Order>> GetAllOrdersWithItemsPaginatedAsync(int page, int pageSize);
+        Task<int> GetTotalOrdersCountAsync();
     }
 }

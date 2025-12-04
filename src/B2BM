@@ -84,7 +84,7 @@ namespace B2BMarketplace.Api.Controllers
                             CreatedAt = user.CreatedAt
                         },
                         userId = user.Id.ToString(),
-                        expiresIn = 3600 // 1 hour
+                        expiresIn = 10080 // Token expiry in minutes (7 days)
                     },
                     timestamp = DateTime.UtcNow
                 });

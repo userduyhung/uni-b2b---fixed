@@ -903,11 +903,11 @@ namespace B2BMarketplace.Infrastructure.Data
                 entity.HasOne(o => o.DeliveryAddress)
                     .WithMany()
                     .HasForeignKey(o => o.DeliveryAddressId)
-                    .OnDelete(DeleteBehavior.SetNull);
+                    .OnDelete(DeleteBehavior.Restrict);
                 entity.HasOne(o => o.PaymentMethod)
                     .WithMany()
                     .HasForeignKey(o => o.PaymentMethodId)
-                    .OnDelete(DeleteBehavior.SetNull);
+                    .OnDelete(DeleteBehavior.Restrict);
                 entity.HasMany(o => o.OrderItems)
                     .WithOne(oi => oi.Order)
                     .HasForeignKey(oi => oi.OrderId)

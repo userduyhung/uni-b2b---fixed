@@ -40,6 +40,7 @@ namespace B2BMarketplace.Core.Entities
         public string OrderId { get; set; }
         public string ProductId { get; set; }
         public string ProductName { get; set; }
+        public string ProductImage { get; set; } // Product image URL
         public int Quantity { get; set; }
         public decimal UnitPrice { get; set; }
         public decimal TotalPrice { get; set; }

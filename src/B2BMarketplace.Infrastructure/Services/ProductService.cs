@@ -92,7 +92,10 @@ namespace B2BMarketplace.Infrastructure.Services
                 Name = createProductDto.Name,
                 Description = createProductDto.Description,
                 Category = createProductDto.Category,
-                ReferencePrice = createProductDto.ReferencePrice
+                ReferencePrice = createProductDto.ReferencePrice,
+                ImagePath = createProductDto.ImagePath,
+                IsActive = true, // Explicitly set to true so product is immediately visible
+                StockQuantity = 0 // Default stock quantity
             };
 
             // Save to database
@@ -147,6 +150,9 @@ namespace B2BMarketplace.Infrastructure.Services
 
             if (updateProductDto.IsActive.HasValue)
                 product.IsActive = updateProductDto.IsActive.Value;
+
+            if (updateProductDto.ImagePath != null)
+                product.ImagePath = updateProductDto.ImagePath;
 
             // Save to database
             var updatedProduct = await _productRepository.UpdateAsync(product);

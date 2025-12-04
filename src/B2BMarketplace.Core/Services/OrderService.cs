@@ -14,25 +14,46 @@ namespace B2BMarketplace.Core.Services
         private readonly ICartService _cartService;
         private readonly IAddressService _addressService;
         private readonly IPaymentMethodService _paymentMethodService;
+        private readonly IProductRepository _productRepository;
 
         public OrderService(
             IOrderRepository orderRepository,
             ICartService cartService,
             IAddressService addressService,
-            IPaymentMethodService paymentMethodService)
+            IPaymentMethodService paymentMethodService,
+            IProductRepository productRepository)
         {
             _orderRepository = orderRepository;
             _cartService = cartService;
             _addressService = addressService;
             _paymentMethodService = paymentMethodService;
+            _productRepository = productRepository;
         }
 
         public async Task<Order> CreateOrderAsync(Guid userId, Order order)
         {
+            Console.WriteLine($"🔵 OrderService.CreateOrderAsync CALLED");
+            Console.WriteLine($"🔵 UserId: {userId}");
+            Console.WriteLine($"🔵 CartId: {order.CartId}");
+            
             // Validate that the cart, address, and payment method belong to the user
             var userIdString = userId.ToString();
             var cart = await _cartService.GetCartItemsAsync(userIdString, order.CartId);
             var cartItemsList = new List<CartItem>(cart);
+            
+            Console.WriteLine($"🔵 CartItems retrieved: {cartItemsList.Count} items");
+            if (cartItemsList.Any())
+            {
+                foreach (var item in cartItemsList)
+                {
+                    Console.WriteLine($"  - CartItem: ProductId={item.ProductId}, Qty={item.Quantity}, Price={item.Price}");
+                }
+            }
+            else
+            {
+                Console.WriteLine($"⚠️ WARNING: Cart is EMPTY! CartId={order.CartId}, UserId={userId}");
+            }
+            
             if (cartItemsList.Count == 0)
             {
                 throw new ArgumentException("Invalid cart or cart does not belong to user");
@@ -52,32 +73,60 @@ namespace B2BMarketplace.Core.Services
 
             // Set the user ID to the one provided, not from the input
             order.UserId = userId;
-            order.SellerId = Guid.Empty; // This needs to be set based on the product's seller
+            order.SellerId = Guid.Empty; // This will be set from first product in cart
             order.Id = Guid.NewGuid().ToString();
             order.Status = "Pending"; // Default status
             order.CreatedAt = DateTime.UtcNow;
             order.UpdatedAt = DateTime.UtcNow;
+            
+            // Set required fields with defaults if not provided
+            order.Currency = order.Currency ?? "VND";
+            order.Notes = order.Notes ?? string.Empty;
+            order.Message = order.Message ?? string.Empty;
+            order.TrackingNumber = order.TrackingNumber ?? string.Empty;
+            order.ShippedWith = order.ShippedWith ?? string.Empty;
 
             // Calculate total amount and populate order items from cart items
             order.TotalAmount = 0;
             order.OrderItems = new List<OrderItem>();
             
+            Console.WriteLine($"🔵 Creating OrderItems from {cartItemsList.Count} CartItems...");
+            
             foreach (var cartItem in cartItemsList)
             {
+                // Fetch product details to get the product name
+                var product = await _productRepository.GetByIdAsync(Guid.Parse(cartItem.ProductId));
+                
+                Console.WriteLine($"  🔵 Product lookup: ProductId={cartItem.ProductId}, Found={product != null}, Name={product?.Name ?? "NULL"}");
+                Console.WriteLine($"  🔵 Product.ImagePath: '{product?.ImagePath ?? "NULL"}'");
+                
                 var orderItem = new OrderItem
                 {
                     Id = Guid.NewGuid().ToString(),
                     OrderId = order.Id, // Set the order ID for the order item
                     ProductId = cartItem.ProductId,
+                    ProductName = product?.Name ?? "Unknown Product", // REQUIRED field
+                    ProductImage = product?.ImagePath ?? "", // Save product image
                     Quantity = cartItem.Quantity,
                     UnitPrice = cartItem.Price,
                     TotalPrice = cartItem.Price * cartItem.Quantity,
                     CreatedAt = DateTime.UtcNow
                 };
                 
+                Console.WriteLine($"  ✅ OrderItem created: Id={orderItem.Id}, ProductName={orderItem.ProductName}, ProductImage='{orderItem.ProductImage}', Qty={orderItem.Quantity}");
+                
                 order.OrderItems.Add(orderItem);
                 order.TotalAmount += orderItem.TotalPrice;
+                
+                // Set SellerId from the first product (all products in cart should be from same seller)
+                if (order.SellerId == Guid.Empty && product != null)
+                {
+                    order.SellerId = product.SellerProfileId;
+                }
             }
+            
+            Console.WriteLine($"🔵 OrderItems creation completed: Total {order.OrderItems.Count} items, TotalAmount={order.TotalAmount}");
+            Console.WriteLine($"🔵 Calling OrderRepository.CreateOrderAsync...");
 
             return await _orderRepository.CreateOrderAsync(order);
         }
@@ -155,6 +204,33 @@ namespace B2BMarketplace.Core.Services
             var updatedOrder = await _orderRepository.UpdateOrderStatusAsync(orderId, "Confirmed", confirmation.Message);
 
             return updatedOrder;
+        }
+
+        // Admin methods
+        public async Task<IEnumerable<Order>> GetAllOrdersAsync()
+        {
+            return await _orderRepository.GetAllOrdersAsync();
+        }
+
+        public async Task<Order> GetOrderByIdAdminAsync(string orderId)
+        {
+            return await _orderRepository.GetOrderByIdAsync(orderId);
+        }
+
+        public async Task<Order> UpdateOrderStatusAdminAsync(string orderId, string newStatus, string notes = null)
+        {
+            var adminNotes = notes ?? $"Status updated by admin to {newStatus}";
+            return await _orderRepository.UpdateOrderStatusAsync(orderId, newStatus, adminNotes);
+        }
+
+        public async Task<IEnumerable<Order>> GetAllOrdersWithItemsAsync(int page, int pageSize)
+        {
+            return await _orderRepository.GetAllOrdersWithItemsPaginatedAsync(page, pageSize);
+        }
+
+        public async Task<int> GetTotalOrdersCountAsync()
+        {
+            return await _orderRepository.GetTotalOrdersCountAsync();
         }
     }
 }

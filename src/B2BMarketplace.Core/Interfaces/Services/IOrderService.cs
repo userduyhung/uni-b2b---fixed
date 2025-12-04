@@ -14,6 +14,13 @@ namespace B2BMarketplace.Core.Interfaces.Services
         Task<Order> UpdateOrderAsync(string orderId, Guid userId, Order order);
         Task<Order> UpdateOrderStatusAsync(string orderId, Guid userId, string newStatus, string notes = null);
         Task<Order> ConfirmOrderAsync(string orderId, Guid sellerId, OrderConfirmationDto confirmation);
+        
+        // Admin methods
+        Task<IEnumerable<Order>> GetAllOrdersAsync();
+        Task<IEnumerable<Order>> GetAllOrdersWithItemsAsync(int page, int pageSize);
+        Task<int> GetTotalOrdersCountAsync();
+        Task<Order> GetOrderByIdAdminAsync(string orderId);
+        Task<Order> UpdateOrderStatusAdminAsync(string orderId, string newStatus, string notes = null);
     }
 
     public class OrderConfirmationDto

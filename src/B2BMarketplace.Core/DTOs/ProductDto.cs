@@ -92,6 +92,13 @@ namespace B2BMarketplace.Core.DTOs
         /// </summary>
         [Range(0, double.MaxValue)]
         public decimal ReferencePrice { get; set; }
+
+        /// <summary>
+        /// Image URL or path (optional)
+        /// </summary>
+        [StringLength(500)]
+        [Url]
+        public string? ImagePath { get; set; }
     }
 
     /// <summary>
@@ -127,5 +134,12 @@ namespace B2BMarketplace.Core.DTOs
         /// Whether product is visible to buyers (optional)
         /// </summary>
         public bool? IsActive { get; set; }
+
+        /// <summary>
+        /// Image URL or path (optional)
+        /// </summary>
+        [StringLength(500)]
+        [Url]
+        public string? ImagePath { get; set; }
     }
 }

@@ -41,6 +41,11 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.IgnoreReadOnlyProperties = false; // Don't ignore read-only properties
         options.JsonSerializerOptions.IncludeFields = true; // Include fields in serialization
         options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles; // Handle circular references
+        
+        // 🕐 Configure DateTime to serialize with Vietnam timezone (UTC+7)
+        // This ensures all DateTime values returned from API are in local Vietnam time
+        options.JsonSerializerOptions.Converters.Add(new VietnamDateTimeConverter());
+        options.JsonSerializerOptions.Converters.Add(new VietnamNullableDateTimeConverter());
     });
 
 // Add Entity Framework: prefer SQL Server when a DefaultConnection is configured

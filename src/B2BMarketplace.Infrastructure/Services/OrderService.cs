@@ -19,6 +19,7 @@ namespace B2BMarketplace.Infrastructure.Services
         private readonly IAddressRepository _addressRepository;
         private readonly IPaymentMethodRepository _paymentMethodRepository;
         private readonly IUserRepository _userRepository;
+        private readonly ISellerProfileRepository _sellerProfileRepository;
 
         /// <summary>
         /// Constructor
@@ -29,13 +30,15 @@ namespace B2BMarketplace.Infrastructure.Services
         /// <param name="addressRepository">Address repository</param>
         /// <param name="paymentMethodRepository">Payment method repository</param>
         /// <param name="userRepository">User repository</param>
+        /// <param name="sellerProfileRepository">Seller profile repository</param>
         public OrderService(
             IOrderRepository orderRepository,
             ICartRepository cartRepository,
             IProductRepository productRepository,
             IAddressRepository addressRepository,
             IPaymentMethodRepository paymentMethodRepository,
-            IUserRepository userRepository)
+            IUserRepository userRepository,
+            ISellerProfileRepository sellerProfileRepository)
         {
             _orderRepository = orderRepository;
             _cartRepository = cartRepository;
@@ -43,14 +46,15 @@ namespace B2BMarketplace.Infrastructure.Services
             _addressRepository = addressRepository;
             _paymentMethodRepository = paymentMethodRepository;
             _userRepository = userRepository;
+            _sellerProfileRepository = sellerProfileRepository;
         }
 
         /// <summary>
-        /// Create a new order
+        /// Create a new order (or multiple orders if cart has items from multiple sellers)
         /// </summary>
         /// <param name="userId">User ID</param>
-        /// <param name="order">Order entity</param>
-        /// <returns>Created order</returns>
+        /// <param name="order">Order entity with cart, address, payment info</param>
+        /// <returns>Created order (first order if multiple sellers)</returns>
         public async Task<Order> CreateOrderAsync(Guid userId, Order order)
         {
             // Validate user exists
@@ -81,18 +85,111 @@ namespace B2BMarketplace.Infrastructure.Services
                 throw new UnauthorizedAccessException("Payment method not found or does not belong to user");
             }
 
-            // Create the order
-            order.Id = Guid.NewGuid().ToString(); // Using string ID
-            order.UserId = userId;
-            order.Status = OrderStatus.Pending.ToString();
-            order.CreatedAt = DateTime.UtcNow;
-            order.UpdatedAt = DateTime.UtcNow;
-
-            // Calculate total amount from cart items
+            // Get cart items first
             var cartItems = await _cartRepository.GetCartItemsAsync(order.CartId);
-            order.TotalAmount = cartItems.Sum(ci => ci.Price * ci.Quantity);
+            if (cartItems == null || !cartItems.Any())
+            {
+                throw new ArgumentException("Cart is empty");
+            }
 
-            var createdOrder = await _orderRepository.CreateOrderAsync(order);
+            // ✨ NEW: Group cart items by seller
+            Console.WriteLine($"🔵 CreateOrder: Grouping {cartItems.Count()} cart items by seller...");
+            var itemsBySeller = new Dictionary<Guid, List<CartItem>>();
+            
+            foreach (var cartItem in cartItems)
+            {
+                var product = await _productRepository.GetByIdAsync(Guid.Parse(cartItem.ProductId));
+                if (product == null)
+                {
+                    Console.WriteLine($"⚠️ Product {cartItem.ProductId} not found, skipping");
+                    continue;
+                }
+
+                var sellerProfile = await _sellerProfileRepository.GetByIdAsync(product.SellerProfileId);
+                if (sellerProfile == null)
+                {
+                    Console.WriteLine($"⚠️ Seller profile {product.SellerProfileId} not found for product {cartItem.ProductId}, skipping");
+                    continue;
+                }
+
+                var sellerId = sellerProfile.UserId;
+                if (!itemsBySeller.ContainsKey(sellerId))
+                {
+                    itemsBySeller[sellerId] = new List<CartItem>();
+                }
+                itemsBySeller[sellerId].Add(cartItem);
+            }
+
+            if (!itemsBySeller.Any())
+            {
+                throw new ArgumentException("No valid products found in cart");
+            }
+
+            Console.WriteLine($"✅ Found {itemsBySeller.Count} different sellers in cart");
+            
+            // ✨ Create one order per seller
+            var createdOrders = new List<Order>();
+            
+            foreach (var sellerGroup in itemsBySeller)
+            {
+                var sellerId = sellerGroup.Key;
+                var sellerItems = sellerGroup.Value;
+                
+                Console.WriteLine($"📦 Creating order for Seller {sellerId} with {sellerItems.Count} items");
+
+                var newOrder = new Order
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    UserId = userId,
+                    SellerId = sellerId,
+                    CartId = order.CartId,
+                    DeliveryAddressId = order.DeliveryAddressId,
+                    PaymentMethodId = order.PaymentMethodId,
+                    SpecialInstructions = order.SpecialInstructions ?? string.Empty,
+                    Status = OrderStatus.Pending.ToString(),
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow,
+                    Currency = order.Currency ?? "VND",
+                    Notes = order.Notes ?? string.Empty,
+                    Message = order.Message ?? string.Empty,
+                    TrackingNumber = order.TrackingNumber ?? string.Empty,
+                    ShippedWith = order.ShippedWith ?? string.Empty,
+                    ShippingCost = 0, // Could be calculated per seller
+                    OrderItems = new List<OrderItem>()
+                };
+
+                // Calculate total for this seller's items
+                decimal sellerTotal = 0;
+                
+                foreach (var cartItem in sellerItems)
+                {
+                    var product = await _productRepository.GetByIdAsync(Guid.Parse(cartItem.ProductId));
+                    var orderItem = new OrderItem
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        OrderId = newOrder.Id,
+                        ProductId = cartItem.ProductId,
+                        ProductName = product?.Name ?? "Unknown Product",
+                        ProductImage = product?.ImagePath ?? "",
+                        Quantity = cartItem.Quantity,
+                        UnitPrice = cartItem.Price,
+                        TotalPrice = cartItem.Price * cartItem.Quantity,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    newOrder.OrderItems.Add(orderItem);
+                    sellerTotal += orderItem.TotalPrice;
+                }
+
+                newOrder.TotalAmount = sellerTotal;
+                newOrder.TotalCost = sellerTotal + newOrder.ShippingCost;
+                
+                Console.WriteLine($"💰 Order total for Seller {sellerId}: {sellerTotal:N0} VND");
+
+                var createdOrder = await _orderRepository.CreateOrderAsync(newOrder);
+                createdOrders.Add(createdOrder);
+            }
+
+            Console.WriteLine($"✅ Created {createdOrders.Count} orders successfully");
 
             // Clear the cart after order creation
             foreach (var item in cartItems)
@@ -100,7 +197,9 @@ namespace B2BMarketplace.Infrastructure.Services
                 await _cartRepository.RemoveItemFromCartAsync(item.Id);
             }
 
-            return createdOrder;
+            // Return the first order (for backward compatibility with existing API contract)
+            // Note: In the future, consider returning List<Order> or a summary DTO
+            return createdOrders.First();
         }
 
         /// <summary>
@@ -263,6 +362,65 @@ namespace B2BMarketplace.Infrastructure.Services
 
             var updatedOrder = await _orderRepository.UpdateOrderAsync(order);
             return updatedOrder != null;
+        }
+
+        // Admin methods
+        
+        /// <summary>
+        /// Get all orders in the system (Admin only)
+        /// </summary>
+        /// <returns>All orders</returns>
+        public async Task<IEnumerable<Order>> GetAllOrdersAsync()
+        {
+            return await _orderRepository.GetAllOrdersAsync();
+        }
+
+        /// <summary>
+        /// Get order by ID without user restriction (Admin view)
+        /// </summary>
+        /// <param name="orderId">Order ID</param>
+        /// <returns>Order details</returns>
+        public async Task<Order> GetOrderByIdAdminAsync(string orderId)
+        {
+            return await _orderRepository.GetOrderByIdAsync(orderId);
+        }
+
+        /// <summary>
+        /// Update order status without user restriction (Admin override)
+        /// </summary>
+        /// <param name="orderId">Order ID</param>
+        /// <param name="newStatus">New status</param>
+        /// <param name="notes">Admin notes</param>
+        /// <returns>Updated order</returns>
+        public async Task<Order> UpdateOrderStatusAdminAsync(string orderId, string newStatus, string notes = null)
+        {
+            if (!Enum.TryParse<OrderStatus>(newStatus, true, out var orderStatus))
+            {
+                throw new ArgumentException($"Invalid order status: {newStatus}");
+            }
+
+            var adminNotes = notes ?? $"Status updated by admin to {newStatus}";
+            return await _orderRepository.UpdateOrderStatusAsync(orderId, newStatus, adminNotes);
+        }
+
+        /// <summary>
+        /// Get all orders with items and pagination (Admin only)
+        /// </summary>
+        /// <param name="page">Page number</param>
+        /// <param name="pageSize">Items per page</param>
+        /// <returns>Paginated orders with items</returns>
+        public async Task<IEnumerable<Order>> GetAllOrdersWithItemsAsync(int page, int pageSize)
+        {
+            return await _orderRepository.GetAllOrdersWithItemsPaginatedAsync(page, pageSize);
+        }
+
+        /// <summary>
+        /// Get total count of all orders (Admin only)
+        /// </summary>
+        /// <returns>Total order count</returns>
+        public async Task<int> GetTotalOrdersCountAsync()
+        {
+            return await _orderRepository.GetTotalOrdersCountAsync();
         }
     }
 }

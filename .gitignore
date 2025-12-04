@@ -160,3 +160,6 @@ coverage/
 
 # Azure
 azure-pipelines.yml
+docs/FIX_ORDER_SELLER_ID.sql
+*.md
+*.sql
