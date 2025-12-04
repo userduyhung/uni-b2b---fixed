@@ -784,6 +784,143 @@ namespace B2BMarketplace.Api.Controllers
                 });
             }
         }
+
+        /// <summary>
+        /// Admin: Get single order by id
+        /// GET /api/orders/admin/{id}
+        /// </summary>
+        [HttpGet("admin/{id}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GetOrderAdmin(string id)
+        {
+            try
+            {
+                var order = await _orderService.GetOrderByIdAsync(id, Guid.Empty);
+
+                if (order == null)
+                {
+                    return NotFound(new { success = false, message = "Order not found" });
+                }
+
+                var orderResponse = new
+                {
+                    id = order.Id,
+                    status = order.Status,
+                    cartId = order.CartId,
+                    total = order.TotalAmount,
+                    totalAmount = order.TotalAmount,
+                    currency = order.Currency,
+                    items = order.OrderItems?.Select(item => new
+                    {
+                        id = item.Id,
+                        orderId = item.OrderId,
+                        productId = item.ProductId,
+                        productName = item.ProductName,
+                        productImage = item.ProductImage,
+                        quantity = item.Quantity,
+                        unitPrice = item.UnitPrice,
+                        totalPrice = item.TotalPrice
+                    }).ToList(),
+                    createdAt = order.CreatedAt,
+                    updatedAt = order.UpdatedAt,
+                    buyerName = order.User?.BuyerProfile?.Name ?? order.User?.Email ?? "N/A",
+                    paymentStatus = order.PaymentStatus?.ToString() ?? "N/A",
+                    buyerEmail = order.User?.Email ?? "N/A",
+                    sellerId = order.SellerId
+                };
+
+                return Ok(new { success = true, data = orderResponse });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Admin: Update order status
+        /// PUT /api/orders/admin/{id}/status
+        /// </summary>
+        [HttpPut("admin/{id}/status")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> UpdateOrderStatusAdmin(string id, [FromBody] UpdateOrderStatusDto dto)
+        {
+            try
+            {
+                var order = await _orderService.GetOrderByIdAsync(id, Guid.Empty);
+                if (order == null)
+                {
+                    return NotFound(new { success = false, message = "Order not found" });
+                }
+
+                var status = dto?.Status ?? string.Empty;
+                var notes = dto?.Notes ?? string.Empty;
+
+                var result = await _orderService.UpdateOrderStatusAsync(id, Guid.Empty, status, notes);
+
+                if (result == null)
+                {
+                    return NotFound(new { success = false, message = "Order not found" });
+                }
+
+                var response = new
+                {
+                    id = result.Id,
+                    status = result.Status,
+                    notes = result.Notes,
+                    updatedAt = result.UpdatedAt
+                };
+
+                return Ok(new { success = true, data = response });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Admin: Update payment status for order
+        /// PUT /api/orders/admin/{id}/payment-status
+        /// </summary>
+        [HttpPut("admin/{id}/payment-status")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> UpdatePaymentStatusAdmin(string id, [FromBody] UpdatePaymentStatusDto dto)
+        {
+            try
+            {
+                var order = await _orderService.GetOrderByIdAsync(id, Guid.Empty);
+                if (order == null)
+                {
+                    return NotFound(new { success = false, message = "Order not found" });
+                }
+
+                if (dto.IsPaid && order.Status == "Pending")
+                {
+                    // Use system/admin user id for audit; pass Guid.Empty or null depending on service implementation
+                    await _orderService.UpdateOrderStatusAsync(id, Guid.Empty, "Confirmed", $"Admin marked paid - Transaction: {dto.TransactionId}");
+                    // Also mark related payment as completed (best-effort)
+                    try
+                    {
+                        await _orderService.CompletePaymentForOrderAsync(id);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"⚠️ Failed to complete payment for order {id}: {ex.Message}");
+                    }
+                }
+
+                return Ok(new {
+                    success = true,
+                    message = "Payment status updated successfully (admin)",
+                    data = new { orderId = id, isPaid = dto.IsPaid, transactionId = dto.TransactionId, updatedAt = DateTime.UtcNow }
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { success = false, message = ex.Message });
+            }
+        }
     }
 
     // ==================== DTO CLASSES ====================

@@ -206,6 +206,15 @@ namespace B2BMarketplace.Core.Services
             return updatedOrder;
         }
 
+        public async Task CompletePaymentForOrderAsync(string orderId)
+        {
+            // The Core service does not have access to the payment repository implementation.
+            // The actual implementation lives in the Infrastructure layer. Throwing here
+            // makes it explicit if this code path is hit in contexts where the Core
+            // implementation is used directly.
+            throw new NotImplementedException("CompletePaymentForOrderAsync is implemented in the Infrastructure OrderService.");
+        }
+
         // Admin methods
         public async Task<IEnumerable<Order>> GetAllOrdersAsync()
         {

@@ -141,4 +141,28 @@ namespace B2BMarketplace.Core.DTOs
         /// </summary>
         public DateTime? CompletedAt { get; set; }
     }
+
+    /// <summary>
+    /// DTO for admin-facing payment view with buyer/seller information
+    /// </summary>
+    public class AdminPaymentDto
+    {
+        public Guid Id { get; set; }
+        public decimal Amount { get; set; }
+        public string Currency { get; set; } = "VND";
+        public string PaymentProvider { get; set; } = string.Empty;
+        public string? ProviderTransactionId { get; set; }
+        public string Status { get; set; } = string.Empty;
+        public string? PaymentMethod { get; set; }
+        public string? Description { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public DateTime? CompletedAt { get; set; }
+
+        // Seller and buyer display names
+        public string? SellerName { get; set; }
+        public string? BuyerName { get; set; }
+
+        // If available, associated order id (string)
+        public string? OrderId { get; set; }
+    }
 }

@@ -99,6 +99,8 @@ namespace B2BMarketplace.Infrastructure.Repositories
                 .Include(o => o.StatusHistory)
                 .Include(o => o.DeliveryAddress)
                 .Include(o => o.PaymentMethod)
+                .Include(o => o.User) // Ensure buyer navigation is loaded for admin endpoints
+                    .ThenInclude(u => u.BuyerProfile)
                 .FirstOrDefaultAsync(o => o.Id == orderId);
         }
 

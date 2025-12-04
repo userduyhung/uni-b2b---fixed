@@ -12,6 +12,10 @@ namespace B2BMarketplace.Core.Entities
         public string DeliveryAddressId { get; set; }
         public string PaymentMethodId { get; set; }
         public string Status { get; set; } // e.g., 'Pending', 'Confirmed', 'Shipped', 'Delivered', 'Cancelled'
+        /// <summary>
+        /// Payment status for the order (reflects related Payment record)
+        /// </summary>
+        public PaymentStatus? PaymentStatus { get; set; }
         public decimal TotalAmount { get; set; }
         public string Currency { get; set; }
         public string SpecialInstructions { get; set; }

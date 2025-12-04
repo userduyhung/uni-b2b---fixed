@@ -15,6 +15,9 @@ namespace B2BMarketplace.Core.Interfaces.Services
         Task<Order> UpdateOrderStatusAsync(string orderId, Guid userId, string newStatus, string notes = null);
         Task<Order> ConfirmOrderAsync(string orderId, Guid sellerId, OrderConfirmationDto confirmation);
         
+        // Mark payment for an order as completed (used by admin or post-delivery flow)
+        Task CompletePaymentForOrderAsync(string orderId);
+        
         // Admin methods
         Task<IEnumerable<Order>> GetAllOrdersAsync();
         Task<IEnumerable<Order>> GetAllOrdersWithItemsAsync(int page, int pageSize);

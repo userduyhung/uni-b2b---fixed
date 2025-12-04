@@ -52,6 +52,18 @@ namespace B2BMarketplace.Core.Entities
         public string? ProviderTransactionId { get; set; }
 
         /// <summary>
+        /// Associated Order ID (string) if this payment is for an order
+        /// </summary>
+        [StringLength(200)]
+        public string? OrderId { get; set; }
+
+        /// <summary>
+        /// Navigation property to the Order (optional)
+        /// </summary>
+        [ForeignKey("OrderId")]
+        public virtual Order? Order { get; set; }
+
+        /// <summary>
         /// Payment status
         /// </summary>
         public PaymentStatus Status { get; set; }

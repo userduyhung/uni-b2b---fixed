@@ -20,6 +20,7 @@ namespace B2BMarketplace.Infrastructure.Services
         private readonly IPaymentMethodRepository _paymentMethodRepository;
         private readonly IUserRepository _userRepository;
         private readonly ISellerProfileRepository _sellerProfileRepository;
+        private readonly IPaymentRepository _paymentRepository;
 
         /// <summary>
         /// Constructor
@@ -38,7 +39,8 @@ namespace B2BMarketplace.Infrastructure.Services
             IAddressRepository addressRepository,
             IPaymentMethodRepository paymentMethodRepository,
             IUserRepository userRepository,
-            ISellerProfileRepository sellerProfileRepository)
+            ISellerProfileRepository sellerProfileRepository,
+            IPaymentRepository paymentRepository)
         {
             _orderRepository = orderRepository;
             _cartRepository = cartRepository;
@@ -47,6 +49,7 @@ namespace B2BMarketplace.Infrastructure.Services
             _paymentMethodRepository = paymentMethodRepository;
             _userRepository = userRepository;
             _sellerProfileRepository = sellerProfileRepository;
+            _paymentRepository = paymentRepository;
         }
 
         /// <summary>
@@ -191,6 +194,20 @@ namespace B2BMarketplace.Infrastructure.Services
 
             Console.WriteLine($"✅ Created {createdOrders.Count} orders successfully");
 
+            // Create payment records for each created order so admin can observe transactions
+            foreach (var createdOrder in createdOrders)
+            {
+                try
+                {
+                    await CreatePaymentForOrderAsync(createdOrder, paymentMethod, user);
+                }
+                catch (Exception ex)
+                {
+                    // Log and continue - payment record creation should not block order creation
+                    Console.WriteLine($"⚠️ Failed to create payment record for Order {createdOrder.Id}: {ex.Message}");
+                }
+            }
+
             // Clear the cart after order creation
             foreach (var item in cartItems)
             {
@@ -220,6 +237,83 @@ namespace B2BMarketplace.Infrastructure.Services
         }
 
         /// <summary>
+        /// Create a payment record for an order (admin visibility / bookkeeping)
+        /// </summary>
+        /// <param name="order">Order</param>
+        /// <param name="paymentMethod">Payment method used</param>
+        /// <param name="buyer">Buyer user</param>
+        /// <returns>Task</returns>
+        private async Task CreatePaymentForOrderAsync(Order order, PaymentMethod paymentMethod, User buyer)
+        {
+            if (order == null) return;
+
+                // Resolve the SellerProfile.Id (the Order.SellerId stores the SellerProfile.UserId)
+                var sellerProfile = await _sellerProfileRepository.GetByUserIdAsync(order.SellerId);
+                if (sellerProfile == null)
+                {
+                    Console.WriteLine($"⚠️ SellerProfile not found for UserId {order.SellerId}, skipping payment creation");
+                    return;
+                }
+
+                var payment = new Payment
+                {
+                    Id = Guid.NewGuid(),
+                    SellerProfileId = sellerProfile.Id,
+                    OrderId = order.Id,
+                    Amount = order.TotalAmount,
+                    Currency = order.Currency ?? "VND",
+                    PaymentProvider = string.Empty,
+                    ProviderTransactionId = null,
+                    Status = PaymentStatus.Pending,
+                    PaymentMethod = paymentMethod?.Type ?? "unknown",
+                    // Build a friendly description from order items, e.g. "2 Bia & 1 Nước lọc"
+                    Description = (order.OrderItems != null && order.OrderItems.Any())
+                        ? string.Join(" & ", order.OrderItems.Select(oi => $"{oi.Quantity} {oi.ProductName}"))
+                        : $"Auto-created payment record for order {order.Id}",
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+
+                await _paymentRepository.AddPaymentAsync(payment);
+                // Reflect initial payment status on the order for quick admin view
+                try
+                {
+                    order.PaymentStatus = payment.Status;
+                    await _orderRepository.UpdateOrderAsync(order);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"⚠️ Failed to update Order.PaymentStatus for {order.Id}: {ex.Message}");
+                }
+        }
+
+        /// <summary>
+        /// Complete payment when order is delivered or admin marks it as paid
+        /// </summary>
+        /// <param name="orderId">Order ID</param>
+        /// <returns>Task</returns>
+        public async Task CompletePaymentForOrderAsync(string orderId)
+        {
+            // Try to find a pending payment associated with this order
+            var pendingPayments = await _paymentRepository.GetPendingPaymentsAsync();
+            var payment = pendingPayments.FirstOrDefault(p => p.OrderId == orderId);
+
+            if (payment == null)
+            {
+                Console.WriteLine($"⚠️ No pending payment found for order {orderId}");
+                return;
+            }
+
+            payment.Status = PaymentStatus.Completed;
+            payment.CompletedAt = DateTime.UtcNow;
+            payment.UpdatedAt = DateTime.UtcNow;
+
+            await _paymentRepository.UpdatePaymentAsync(payment);
+
+            Console.WriteLine($"✅ Payment {payment.Id} for Order {orderId} marked as Completed");
+        }
+
+        /// <summary>
         /// Get order by ID
         /// </summary>
         /// <param name="orderId">Order ID</param>
@@ -229,8 +323,14 @@ namespace B2BMarketplace.Infrastructure.Services
         {
             var order = await _orderRepository.GetOrderByIdAsync(orderId);
 
-            // Only return the order if it belongs to the requesting user
-            if (order != null && order.UserId == userId)
+            // Admin bypass: if userId == Guid.Empty, allow access to the order for admin endpoints
+            if (userId == Guid.Empty)
+            {
+                return order;
+            }
+
+            // Return the order if it belongs to the requesting user (buyer) or the seller
+            if (order != null && (order.UserId == userId || order.SellerId == userId))
             {
                 return order;
             }
