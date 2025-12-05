@@ -555,12 +555,15 @@ if (app.Environment.IsDevelopment())
 
 app.Run();
 
-// Tự động apply migrations khi app khởi động (trên Railway & local)
- using (var scope = app.Services.CreateScope())
+// Tự tạo database + bảng nếu chưa có (cho môi trường dev / Railway hiện tại)
+using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    db.Database.Migrate();
+
+    // Nếu sau này bạn dùng migration thì đổi thành db.Database.Migrate();
+    db.Database.EnsureCreated();
 }
+
 
 
 // Make the Program class public for testing
