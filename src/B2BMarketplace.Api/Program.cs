@@ -58,31 +58,31 @@ builder.Services.AddControllers()
 // Add Entity Framework: prefer SQL Server when a DefaultConnection is configured
 //var defaultConn = builder.Configuration.GetConnectionString("DefaultConnection");
 var defaultConnMySql = builder.Configuration.GetConnectionString("DefaultConnectionMySql")
-    ?? Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnectionMySql")
-    ?? Environment.GetEnvironmentVariable("RAILWAY_MYSQL_URL")
-    ?? Environment.GetEnvironmentVariable("MYSQL_URL")
-    ?? Environment.GetEnvironmentVariable("CLEARDB_DATABASE_URL");
+    ?? Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnectionMySql");
+    // ?? Environment.GetEnvironmentVariable("RAILWAY_MYSQL_URL")
+    // ?? Environment.GetEnvironmentVariable("MYSQL_URL")
+    // ?? Environment.GetEnvironmentVariable("CLEARDB_DATABASE_URL");
 
-if (!string.IsNullOrWhiteSpace(defaultConnMySql) && defaultConnMySql.StartsWith("mysql://", StringComparison.OrdinalIgnoreCase))
+if (!string.IsNullOrWhiteSpace(defaultConnMySql))
 {
-    try
-    {
-        var uri = new Uri(defaultConnMySql);
-        var userInfo = uri.UserInfo.Split(':', 2);
-        var user = Uri.UnescapeDataString(userInfo.ElementAtOrDefault(0) ?? "");
-        var pass = Uri.UnescapeDataString(userInfo.ElementAtOrDefault(1) ?? "");
-        var host = uri.Host;
-        var port = uri.Port > 0 ? uri.Port : 3306;
-        var db = uri.AbsolutePath.TrimStart('/');
-        var ado = $"Server={host};Port={port};Database={db};User={user};Password={pass};Charset=utf8mb4;";
-        defaultConnMySql = ado;
-        // update configuration so other code reads the converted string if needed
-        builder.Configuration["ConnectionStrings:DefaultConnection"] = ado;
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"Failed to parse MySQL connection string: {ex.Message}");
-    }
+    // try
+    // {
+    //     var uri = new Uri(defaultConnMySql);
+    //     var userInfo = uri.UserInfo.Split(':', 2);
+    //     var user = Uri.UnescapeDataString(userInfo.ElementAtOrDefault(0) ?? "");
+    //     var pass = Uri.UnescapeDataString(userInfo.ElementAtOrDefault(1) ?? "");
+    //     var host = uri.Host;
+    //     var port = uri.Port > 0 ? uri.Port : 3306;
+    //     var db = uri.AbsolutePath.TrimStart('/');
+    //     var ado = $"Server={host};Port={port};Database={db};User={user};Password={pass};Charset=utf8mb4;";
+    //     defaultConnMySql = ado;
+    //     // update configuration so other code reads the converted string if needed
+    //     builder.Configuration["ConnectionStrings:DefaultConnection"] = ado;
+    // }
+    // catch (Exception ex)
+    // {
+    //     Console.WriteLine($"Failed to parse MySQL connection string: {ex.Message}");
+    // }
 
     // Prefer MySQL if a MySQL connection string is provided
     builder.Services.AddDbContext<ApplicationDbContext>(options =>
