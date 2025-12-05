@@ -424,11 +424,11 @@ builder.Services.AddSwaggerGen(c =>
 var app = builder.Build();
 
 // Seed data first
-using (var scope = app.Services.CreateScope())
-{
-    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-    await B2BMarketplace.Infrastructure.Data.DataSeeder.SeedAsync(context);
-}
+//using (var scope = app.Services.CreateScope())
+//{
+//    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+//    //await B2BMarketplace.Infrastructure.Data.DataSeeder.SeedAsync(context);
+//}
 
 // Configure security exception handling
 SecurityConfiguration.ConfigureSecurityExceptionHandling(app);
