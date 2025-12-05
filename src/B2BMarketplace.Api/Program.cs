@@ -56,7 +56,7 @@ builder.Services.AddControllers()
     });
 
 // Add Entity Framework: prefer SQL Server when a DefaultConnection is configured
-var defaultConn = builder.Configuration.GetConnectionString("DefaultConnection");
+//var defaultConn = builder.Configuration.GetConnectionString("DefaultConnection");
 var defaultConnMySql = builder.Configuration.GetConnectionString("DefaultConnectionMySql");
 
 if (!string.IsNullOrWhiteSpace(defaultConnMySql))
@@ -65,12 +65,12 @@ if (!string.IsNullOrWhiteSpace(defaultConnMySql))
     builder.Services.AddDbContext<ApplicationDbContext>(options =>
         options.UseMySql(defaultConnMySql, ServerVersion.AutoDetect(defaultConnMySql)));
 }
-else if (!string.IsNullOrWhiteSpace(defaultConn))
-{
-    // Use SQL Server (e.g., local SQL Server 2022)
-    builder.Services.AddDbContext<ApplicationDbContext>(options =>
-        options.UseSqlServer(defaultConn));
-}
+//else if (!string.IsNullOrWhiteSpace(defaultConn))
+//{
+//    // Use SQL Server (e.g., local SQL Server 2022)
+//    builder.Services.AddDbContext<ApplicationDbContext>(options =>
+//        options.UseSqlServer(defaultConn));
+//}
 else if (builder.Environment.IsDevelopment())
 {
     // Development fallback: In-memory (keeps existing dev behavior)
