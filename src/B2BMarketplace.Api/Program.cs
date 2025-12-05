@@ -26,6 +26,13 @@ using B2BMarketplace.Core.Interfaces.Services.Premium;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// If running on platforms like Railway, bind to the PORT env var
+var portEnv = Environment.GetEnvironmentVariable("PORT");
+if (!string.IsNullOrWhiteSpace(portEnv))
+{
+    builder.WebHost.UseUrls($"http://0.0.0.0:{portEnv}");
+}
+
 // Configure logging
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
@@ -50,8 +57,15 @@ builder.Services.AddControllers()
 
 // Add Entity Framework: prefer SQL Server when a DefaultConnection is configured
 var defaultConn = builder.Configuration.GetConnectionString("DefaultConnection");
+var defaultConnMySql = builder.Configuration.GetConnectionString("DefaultConnectionMySql");
 
-if (!string.IsNullOrWhiteSpace(defaultConn))
+if (!string.IsNullOrWhiteSpace(defaultConnMySql))
+{
+    // Prefer MySQL if a MySQL connection string is provided
+    builder.Services.AddDbContext<ApplicationDbContext>(options =>
+        options.UseMySql(defaultConnMySql, ServerVersion.AutoDetect(defaultConnMySql)));
+}
+else if (!string.IsNullOrWhiteSpace(defaultConn))
 {
     // Use SQL Server (e.g., local SQL Server 2022)
     builder.Services.AddDbContext<ApplicationDbContext>(options =>
