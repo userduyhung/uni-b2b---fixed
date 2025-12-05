@@ -98,6 +98,7 @@ public static class SecurityConfiguration
             options.AddPolicy("ProductionCors", policy =>
             {
                 policy.WithOrigins(
+                        "https://fsourcing.vercel.app",  // ✅ Frontend Vercel
                         "https://localhost:5001", 
                         "https://yourdomain.com", 
                         "http://localhost:5000",
