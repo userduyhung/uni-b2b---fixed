@@ -470,6 +470,23 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
+//send data to Railway
+// Tự tạo database + bảng nếu chưa có
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    try
+    {
+        db.Database.EnsureCreated(); // hoặc db.Database.Migrate() nếu bạn dùng migrations
+        Console.WriteLine("[DB] EnsureCreated executed");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine("[DB] EnsureCreated error: " + ex.Message);
+    }
+}
+
+
 // Seed data first
 //using (var scope = app.Services.CreateScope())
 //{
