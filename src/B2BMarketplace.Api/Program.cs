@@ -57,55 +57,79 @@ builder.Services.AddControllers()
 
 // Add Entity Framework: prefer SQL Server when a DefaultConnection is configured
 //var defaultConn = builder.Configuration.GetConnectionString("DefaultConnection");
-var defaultConnMySql = builder.Configuration.GetConnectionString("DefaultConnectionMySql")
-    ?? Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnectionMySql");
-    // ?? Environment.GetEnvironmentVariable("RAILWAY_MYSQL_URL")
-    // ?? Environment.GetEnvironmentVariable("MYSQL_URL")
-    // ?? Environment.GetEnvironmentVariable("CLEARDB_DATABASE_URL");
+// var defaultConnMySql = builder.Configuration.GetConnectionString("DefaultConnectionMySql")
+//     ?? Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnectionMySql");
 
-if (!string.IsNullOrWhiteSpace(defaultConnMySql))
+// if (!string.IsNullOrWhiteSpace(defaultConnMySql))
+// {
+//     // try
+//     // {
+//     //     var uri = new Uri(defaultConnMySql);
+//     //     var userInfo = uri.UserInfo.Split(':', 2);
+//     //     var user = Uri.UnescapeDataString(userInfo.ElementAtOrDefault(0) ?? "");
+//     //     var pass = Uri.UnescapeDataString(userInfo.ElementAtOrDefault(1) ?? "");
+//     //     var host = uri.Host;
+//     //     var port = uri.Port > 0 ? uri.Port : 3306;
+//     //     var db = uri.AbsolutePath.TrimStart('/');
+//     //     var ado = $"Server={host};Port={port};Database={db};User={user};Password={pass};Charset=utf8mb4;";
+//     //     defaultConnMySql = ado;
+//     //     // update configuration so other code reads the converted string if needed
+//     //     builder.Configuration["ConnectionStrings:DefaultConnection"] = ado;
+//     // }
+//     // catch (Exception ex)
+//     // {
+//     //     Console.WriteLine($"Failed to parse MySQL connection string: {ex.Message}");
+//     // }
+
+//     // Prefer MySQL if a MySQL connection string is provided
+//     builder.Services.AddDbContext<ApplicationDbContext>(options =>
+//         options.UseMySql(defaultConnMySql, ServerVersion.AutoDetect(defaultConnMySql)));
+// }
+// //else if (!string.IsNullOrWhiteSpace(defaultConn))
+// //{
+// //    // Use SQL Server (e.g., local SQL Server 2022)
+// //    builder.Services.AddDbContext<ApplicationDbContext>(options =>
+// //        options.UseSqlServer(defaultConn));
+// //}
+// else if (builder.Environment.IsDevelopment())
+// {
+//     // Development fallback: In-memory (keeps existing dev behavior)
+//     builder.Services.AddDbContext<ApplicationDbContext>(options =>
+//         options.UseInMemoryDatabase("B2BMarketplaceTestDb"));
+// }
+// else
+// {
+//     // Production fallback: SQLite file
+//     builder.Services.AddDbContext<ApplicationDbContext>(options =>
+//         options.UseSqlite("Data Source=b2bmarketplace.db"));
+// }
+
+
+// ===== SIMPLE RAILWAY MYSQL CONFIG =====
+var conn =
+    builder.Configuration.GetConnectionString("DefaultConnectionMySql") ??
+    Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnectionMySql");
+
+if (!string.IsNullOrWhiteSpace(conn))
 {
-    // try
-    // {
-    //     var uri = new Uri(defaultConnMySql);
-    //     var userInfo = uri.UserInfo.Split(':', 2);
-    //     var user = Uri.UnescapeDataString(userInfo.ElementAtOrDefault(0) ?? "");
-    //     var pass = Uri.UnescapeDataString(userInfo.ElementAtOrDefault(1) ?? "");
-    //     var host = uri.Host;
-    //     var port = uri.Port > 0 ? uri.Port : 3306;
-    //     var db = uri.AbsolutePath.TrimStart('/');
-    //     var ado = $"Server={host};Port={port};Database={db};User={user};Password={pass};Charset=utf8mb4;";
-    //     defaultConnMySql = ado;
-    //     // update configuration so other code reads the converted string if needed
-    //     builder.Configuration["ConnectionStrings:DefaultConnection"] = ado;
-    // }
-    // catch (Exception ex)
-    // {
-    //     Console.WriteLine($"Failed to parse MySQL connection string: {ex.Message}");
-    // }
-
-    // Prefer MySQL if a MySQL connection string is provided
+    Console.WriteLine("[DB] Using Railway MySQL");
     builder.Services.AddDbContext<ApplicationDbContext>(options =>
-        options.UseMySql(defaultConnMySql, ServerVersion.AutoDetect(defaultConnMySql)));
+        options.UseMySql(conn, ServerVersion.AutoDetect(conn)));
 }
-//else if (!string.IsNullOrWhiteSpace(defaultConn))
-//{
-//    // Use SQL Server (e.g., local SQL Server 2022)
-//    builder.Services.AddDbContext<ApplicationDbContext>(options =>
-//        options.UseSqlServer(defaultConn));
-//}
 else if (builder.Environment.IsDevelopment())
 {
-    // Development fallback: In-memory (keeps existing dev behavior)
+    Console.WriteLine("[DB] Using InMemory (DEV)");
     builder.Services.AddDbContext<ApplicationDbContext>(options =>
         options.UseInMemoryDatabase("B2BMarketplaceTestDb"));
 }
 else
 {
-    // Production fallback: SQLite file
+    Console.WriteLine("[DB] Using SQLite fallback");
     builder.Services.AddDbContext<ApplicationDbContext>(options =>
         options.UseSqlite("Data Source=b2bmarketplace.db"));
 }
+// ===== END MYSQL CONFIG =====
+
 
 // Register services
 builder.Services.AddScoped<IUserRepository, UserRepository>();
