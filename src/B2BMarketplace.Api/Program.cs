@@ -77,7 +77,7 @@ if (!string.IsNullOrWhiteSpace(defaultConnMySql) && defaultConnMySql.StartsWith(
         var ado = $"Server={host};Port={port};Database={db};User={user};Password={pass};Charset=utf8mb4;";
         defaultConnMySql = ado;
         // update configuration so other code reads the converted string if needed
-        builder.Configuration["ConnectionStrings:DefaultConnectionMySql"] = ado;
+        builder.Configuration["ConnectionStrings:DefaultConnection"] = ado;
     }
     catch (Exception ex)
     {
