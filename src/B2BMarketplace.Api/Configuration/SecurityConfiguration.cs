@@ -103,8 +103,10 @@ public static class SecurityConfiguration
                         "https://localhost:5001", 
                         "https://yourdomain.com", 
                         "http://localhost:5000",
-                        "http://localhost:5174", // Local development, ADMIN
-                        "https://*.github.dev") // Configure your allowed origins
+                                                "http://localhost:5174", // Local development, ADMIN
+                                                "http://localhost:5173", // Vite default for main frontend dev
+                                                "http://127.0.0.1:5173", // alternative localhost host
+                                                "https://*.github.dev") // Configure your allowed origins
                       .SetIsOriginAllowedToAllowWildcardSubdomains()
                       .WithMethods("GET", "POST", "PUT", "DELETE")
                       .WithHeaders("Content-Type", "Authorization")
