@@ -570,8 +570,6 @@ if (app.Environment.IsDevelopment())
 }
 // ---------------------------------------------
 
-app.Run();
-
 // Tự tạo database + bảng nếu chưa có (cho môi trường dev / Railway hiện tại)
 using (var scope = app.Services.CreateScope())
 {
@@ -580,6 +578,8 @@ using (var scope = app.Services.CreateScope())
     // Nếu sau này bạn dùng migration thì đổi thành db.Database.Migrate();
     db.Database.EnsureCreated();
 }
+
+app.Run();
 
 
 

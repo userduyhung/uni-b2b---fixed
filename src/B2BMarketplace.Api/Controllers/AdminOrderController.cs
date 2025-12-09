@@ -105,7 +105,8 @@ namespace B2BMarketplace.Api.Controllers
                         // ✨ Buyer information
                         buyerId = buyer?.Id.ToString(),
                         buyerEmail = buyer?.Email,
-                        buyerName = buyer?.BuyerProfile?.CompanyName ?? buyer?.Email ?? "N/A",
+                        // Prefer the buyer's full Name, then CompanyName, then email as a fallback
+                        buyerName = buyer?.BuyerProfile?.Name ?? buyer?.BuyerProfile?.CompanyName ?? buyer?.Email ?? "N/A",
                         
                         // ✨ Seller information
                         sellerId = seller?.Id.ToString(),

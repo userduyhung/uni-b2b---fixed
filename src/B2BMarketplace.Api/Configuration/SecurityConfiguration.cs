@@ -99,9 +99,11 @@ public static class SecurityConfiguration
             {
                 policy.WithOrigins(
                         "https://fsourcing.vercel.app",  // ✅ Frontend Vercel
+                        "https://adminfsourcing.vercel.app", // ✅ Frontend Admin Vercel
                         "https://localhost:5001", 
                         "https://yourdomain.com", 
                         "http://localhost:5000",
+                        "http://localhost:5174", // Local development, ADMIN
                         "https://*.github.dev") // Configure your allowed origins
                       .SetIsOriginAllowedToAllowWildcardSubdomains()
                       .WithMethods("GET", "POST", "PUT", "DELETE")
