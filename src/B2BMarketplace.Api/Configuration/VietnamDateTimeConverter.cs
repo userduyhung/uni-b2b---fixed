@@ -10,7 +10,7 @@ namespace B2BMarketplace.Api.Configuration
     /// </summary>
     public class VietnamDateTimeConverter : JsonConverter<DateTime>
     {
-        private static readonly TimeZoneInfo VietnamTimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+        private static readonly TimeZoneInfo VietnamTimeZone = TimeZoneHelper.VietnamTimeZone;
 
         public override DateTime Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
@@ -30,28 +30,29 @@ namespace B2BMarketplace.Api.Configuration
 
         public override void Write(Utf8JsonWriter writer, DateTime value, JsonSerializerOptions options)
         {
-            // Convert UTC time to Vietnam time (UTC+7) before writing to JSON
-            DateTime vietnamTime;
-            
+            // Normalize input to a DateTimeOffset representing the instant in UTC
+            DateTimeOffset utcDto;
+
             if (value.Kind == DateTimeKind.Utc)
             {
-                // If it's already UTC, convert to Vietnam time
-                vietnamTime = TimeZoneInfo.ConvertTimeFromUtc(value, VietnamTimeZone);
+                utcDto = new DateTimeOffset(value);
             }
-            else if (value.Kind == DateTimeKind.Unspecified)
+            else if (value.Kind == DateTimeKind.Local)
             {
-                // If unspecified, assume it's UTC and convert
-                var utcTime = DateTime.SpecifyKind(value, DateTimeKind.Utc);
-                vietnamTime = TimeZoneInfo.ConvertTimeFromUtc(utcTime, VietnamTimeZone);
+                utcDto = new DateTimeOffset(value).ToUniversalTime();
             }
-            else
+            else // Unspecified - assume it's UTC (existing behavior)
             {
-                // If it's already local time, use as is
-                vietnamTime = value;
+                var assumedUtc = DateTime.SpecifyKind(value, DateTimeKind.Utc);
+                utcDto = new DateTimeOffset(assumedUtc);
             }
 
-            // Write in ISO 8601 format with timezone offset
-            writer.WriteStringValue(vietnamTime.ToString("yyyy-MM-ddTHH:mm:ss.fffzzz"));
+            // Convert UTC instant to Vietnam time zone offset-aware DateTimeOffset
+            var vietOffset = VietnamTimeZone.GetUtcOffset(utcDto.UtcDateTime);
+            var vietDto = utcDto.ToOffset(vietOffset);
+
+            // Write in ISO 8601 round-trip format with offset
+            writer.WriteStringValue(vietDto.ToString("o"));
         }
     }
 
@@ -60,7 +61,7 @@ namespace B2BMarketplace.Api.Configuration
     /// </summary>
     public class VietnamNullableDateTimeConverter : JsonConverter<DateTime?>
     {
-        private static readonly TimeZoneInfo VietnamTimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+        private static readonly TimeZoneInfo VietnamTimeZone = TimeZoneHelper.VietnamTimeZone;
 
         public override DateTime? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
@@ -89,25 +90,53 @@ namespace B2BMarketplace.Api.Configuration
                 return;
             }
 
-            // Convert UTC time to Vietnam time (UTC+7) before writing to JSON
-            DateTime vietnamTime;
             var dateTime = value.Value;
-            
+
+            DateTimeOffset utcDto;
             if (dateTime.Kind == DateTimeKind.Utc)
             {
-                vietnamTime = TimeZoneInfo.ConvertTimeFromUtc(dateTime, VietnamTimeZone);
+                utcDto = new DateTimeOffset(dateTime);
             }
-            else if (dateTime.Kind == DateTimeKind.Unspecified)
+            else if (dateTime.Kind == DateTimeKind.Local)
             {
-                var utcTime = DateTime.SpecifyKind(dateTime, DateTimeKind.Utc);
-                vietnamTime = TimeZoneInfo.ConvertTimeFromUtc(utcTime, VietnamTimeZone);
+                utcDto = new DateTimeOffset(dateTime).ToUniversalTime();
             }
             else
             {
-                vietnamTime = dateTime;
+                var assumedUtc = DateTime.SpecifyKind(dateTime, DateTimeKind.Utc);
+                utcDto = new DateTimeOffset(assumedUtc);
             }
 
-            writer.WriteStringValue(vietnamTime.ToString("yyyy-MM-ddTHH:mm:ss.fffzzz"));
+            var vietOffset = VietnamTimeZone.GetUtcOffset(utcDto.UtcDateTime);
+            var vietDto = utcDto.ToOffset(vietOffset);
+            writer.WriteStringValue(vietDto.ToString("o"));
         }
     }
 }
+
+    internal static class TimeZoneHelper
+    {
+        internal static readonly TimeZoneInfo VietnamTimeZone = CreateVietnamTimeZone();
+
+        private static TimeZoneInfo CreateVietnamTimeZone()
+        {
+            // Try Windows ID first, then IANA. Fallback to UTC.
+            var windowsId = "SE Asia Standard Time";
+            var ianaId = "Asia/Ho_Chi_Minh";
+            try
+            {
+                return TimeZoneInfo.FindSystemTimeZoneById(windowsId);
+            }
+            catch
+            {
+                try
+                {
+                    return TimeZoneInfo.FindSystemTimeZoneById(ianaId);
+                }
+                catch
+                {
+                    return TimeZoneInfo.Utc;
+                }
+            }
+        }
+    }
