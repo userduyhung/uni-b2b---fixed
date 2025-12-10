@@ -81,7 +81,8 @@ namespace B2BMarketplace.Api.Controllers
                             Id = user.Id,
                             Email = user.Email,
                             Role = user.Role.ToString(),
-                            CreatedAt = user.CreatedAt
+                            CreatedAt = user.CreatedAt,
+                            LastLoginDate = user.LastLoginDate
                         },
                         userId = user.Id.ToString(),
                         expiresIn = 10080  // Token expiry in minutes (7 days)

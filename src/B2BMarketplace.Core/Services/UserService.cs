@@ -94,6 +94,18 @@ namespace B2BMarketplace.Core.Services
             if (!_passwordService.ValidatePassword(password, user.PasswordHash))
                 return null;
 
+            // Update last login timestamp and persist
+            try
+            {
+                user.LastLoginDate = DateTime.UtcNow;
+                user.UpdatedAt = DateTime.UtcNow;
+                await _userRepository.UpdateUserAsync(user);
+            }
+            catch
+            {
+                // Swallow exceptions here to avoid failing authentication if update fails
+            }
+
             return user;
         }
 
