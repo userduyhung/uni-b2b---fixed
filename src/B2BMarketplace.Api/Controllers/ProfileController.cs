@@ -897,11 +897,16 @@ namespace B2BMarketplace.Api.Controllers
             }
             catch (Exception ex)
             {
+                // Log full exception including inner exception and stack trace for debugging
+                _logger.LogError(ex, "Exception in UpdateBuyerProfile for user: {User}. Inner: {Inner}", User?.Identity?.Name, ex.InnerException?.Message);
+
+                var inner = ex.InnerException?.Message;
                 return StatusCode(500, new
                 {
                     error = "An error occurred while updating buyer profile",
                     timestamp = DateTime.UtcNow,
-                    details = ex.Message
+                    details = inner != null ? ex.Message + " | InnerException: " + inner : ex.Message,
+                    stack = ex.StackTrace
                 });
             }
         }

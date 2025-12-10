@@ -99,7 +99,7 @@ public static class SecurityConfiguration
             {
                 policy.WithOrigins(
                         "https://fsourcing.vercel.app",  // ✅ Frontend Vercel
-                        "https://adminfsourcing.vercel.app", // ✅ Frontend Admin Vercel
+                        "https://fsourcing-admin.vercel.app", // ✅ Frontend Admin Vercel
                         "https://localhost:5001", 
                         "https://yourdomain.com", 
                         "http://localhost:5000",
