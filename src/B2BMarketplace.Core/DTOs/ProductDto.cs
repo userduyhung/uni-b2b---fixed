@@ -61,6 +61,11 @@ namespace B2BMarketplace.Core.DTOs
         /// Current stock quantity of the product
         /// </summary>
         public int StockQuantity { get; set; }
+
+        /// <summary>
+        /// Display name of the seller (company name) for convenience in API responses
+        /// </summary>
+        public string? SellerCompanyName { get; set; }
     }
 
     /// <summary>

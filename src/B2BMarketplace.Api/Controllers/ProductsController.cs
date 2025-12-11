@@ -171,6 +171,7 @@ namespace B2BMarketplace.Api.Controllers
                 {
                     id = product.Id,
                     sellerId = product.SellerProfileId,
+                    sellerCompanyName = product.SellerCompanyName,
                     name = product.Name,
                     description = product.Description,
                     price = product.ReferencePrice, // Add price property that maps to ReferencePrice for compatibility
@@ -250,6 +251,7 @@ namespace B2BMarketplace.Api.Controllers
                 {
                     id = product.Id,
                     sellerId = product.SellerProfileId,
+                    sellerCompanyName = product.SellerCompanyName,
                     name = product.Name,
                     description = product.Description,
                     price = product.ReferencePrice, // Add price property that maps to ReferencePrice for compatibility

@@ -56,7 +56,13 @@ namespace B2BMarketplace.Infrastructure.Services
                 products = await _productRepository.GetAllAsync();
             }
 
-            return products.Select(MapToDto);
+            var dtoList = new List<ProductDto>();
+            foreach (var prod in products)
+            {
+                dtoList.Add(await MapToDtoAsync(prod));
+            }
+
+            return dtoList;
         }
 
         /// <summary>
@@ -67,7 +73,7 @@ namespace B2BMarketplace.Infrastructure.Services
         public async Task<ProductDto?> GetProductByIdAsync(Guid id)
         {
             var product = await _productRepository.GetByIdAsync(id);
-            return product == null ? null : MapToDto(product);
+            return product == null ? null : await MapToDtoAsync(product);
         }
 
         /// <summary>
@@ -102,7 +108,7 @@ namespace B2BMarketplace.Infrastructure.Services
             var createdProduct = await _productRepository.CreateAsync(product);
 
             // Return DTO
-            return MapToDto(createdProduct);
+            return await MapToDtoAsync(createdProduct);
         }
 
         /// <summary>
@@ -158,7 +164,7 @@ namespace B2BMarketplace.Infrastructure.Services
             var updatedProduct = await _productRepository.UpdateAsync(product);
 
             // Return DTO
-            return MapToDto(updatedProduct);
+            return await MapToDtoAsync(updatedProduct);
         }
 
         /// <summary>
@@ -218,7 +224,7 @@ namespace B2BMarketplace.Infrastructure.Services
             }
 
             // Return DTO
-            return MapToDto(updatedProduct);
+            return await MapToDtoAsync(updatedProduct);
         }
 
         /// <summary>
@@ -242,6 +248,26 @@ namespace B2BMarketplace.Infrastructure.Services
                 IsActive = product.IsActive,
                 StockQuantity = product.StockQuantity
             };
+        }
+
+        private async Task<ProductDto> MapToDtoAsync(Product product)
+        {
+            var dto = MapToDto(product);
+
+            if (product.SellerProfileId != Guid.Empty)
+            {
+                try
+                {
+                    var sellerProfile = await _sellerProfileRepository.GetByIdAsync(product.SellerProfileId);
+                    dto.SellerCompanyName = sellerProfile?.CompanyName;
+                }
+                catch
+                {
+                    // If for any reason seller profile lookup fails, just leave SellerCompanyName null
+                }
+            }
+
+            return dto;
         }
     }
 }
